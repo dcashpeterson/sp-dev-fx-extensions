@@ -13,15 +13,17 @@ if ($Credentials -eq $null) {
     $Credentials  = Get-Credential -Message "Enter Site Administrator Credentials"
 }
 
-Connect-PnPOnline -Url $Url -Credentials $Credentials
+Connect-PnPOnline -Url "https://derekcp.sharepoint.com/sites/PnPGlobalNavClassicTeam" -Credentials $Credentials
 
 Write-Output "Script Links before:"
 Get-PnPJavaScriptLink
 
 Write-Output "`n`nRemoving script links"
 Remove-PnPJavaScriptLink -Name HeaderFooter -Force
+Remove-PnPJavaScriptLink -Name HeaderFooterCommon -Force
 Remove-PnPJavaScriptLink -Name ReactDom -Force
 Remove-PnPJavaScriptLink -Name React -Force
+Remove-PnPJavaScriptLink -Name Require -Force
 
 Write-Output "`n`nScript Links After:"
 Get-PnPJavaScriptLink

@@ -1,6 +1,25 @@
+# myTakeda Global Nav SPFx application customizer
 
-Here is the script to run on a publishing site:
+Building DEV, STAGING, and PROD versions of classic nav bootstrapper.
+**NOTE**: Make sure you update the paths for the various injected scripts in the webpack.config.js file.
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.6.2/react.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/15.6.2/react-dom.min.js"></script>
-<script src="/sites/pubsite/Style%20Library/Scripts/bundleClassic.js"></script>
+## Building DEV deployment
+
+Run command
+`npm version prerelease --preid=beta`
+
+This will set the environment value to a number between 100-199. This will indicate to the bootstrapper that it should tell globalNavUI.js to load the GlobalNavUI_DEV tenant app property.
+
+## Building STAGING deployment
+
+Run command
+`npm version prerelease --preid=pre`
+
+This will set the environment value to a number between 200-299. This will indicate to the bootstrapper that it should tell globalNavUI.js to load the GlobalNavUI_STAGING tenant app property.
+
+## Building PROD deployment
+
+Run command
+`npm version [major | minor | patch]`
+
+This will set the environment value to 300. This will indicate to the bootstrapper that it should tell globalNavUI.js to load the GlobalNavUI_PROD tenant app property.

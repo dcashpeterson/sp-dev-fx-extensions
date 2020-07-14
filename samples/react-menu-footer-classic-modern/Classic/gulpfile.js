@@ -1,87 +1,89 @@
-"use strict";
-//Node v 8.9.4
-var gulp = require('gulp');
-var watch = require('gulp-watch');
-var cache = require('gulp-cache');
-var spsave = require('spsave').spsave;
-var map = require('map-stream');
+const {
+  src,
+  dest,
+  watch,
+  series
+} = require('gulp'),
+  ts = require('gulp-typescript'),
+  plumber = require('gulp-plumber'),
+  sass = require('gulp-sass'),
+  sourcemaps = require('gulp-sourcemaps'),
+  autoprefixer = require('gulp-autoprefixer'),
+  webpackStream = require('webpack-stream'),
+  args = require('yargs'),
+  rimraf = require('rimraf');
 
-var settings = require("./settings.json");
-var settingsSecurity = require("./settings_security.json");
+args.argv['ship'] !== undefined ? isProduction = true : isProduction = false;
 
-function makeHashKey(file) {
-    return [file.contents.toString('utf8'), file.stat.mtime.toISOString()].join('');
+console.log('isProduction', isProduction);
+
+
+const tsSrc = './src/**/*.ts*',
+  sassFiles = './src/**/*.scss',
+  outDir = './lib/';
+
+const tsProject = ts.createProject('tsconfig.json');
+
+// Compile TypeScript
+const tsCompile = () => {
+
+  return src(tsSrc)
+    .pipe(plumber())
+    .pipe(tsProject())
+    .pipe(
+      dest(outDir)
+    );
+
+};
+
+// Compile SASS files to lib
+const sassCompile = () => {
+
+  return src(sassFiles)
+    .pipe(plumber())
+    .pipe(sourcemaps.init())
+    .pipe(sass.sync({
+      outputStyle: 'expanded',
+      precision: 10,
+      includePaths: ['.']
+    }).on('error', sass.logError))
+    .pipe(autoprefixer())
+    .pipe(sourcemaps.write())
+    .pipe(dest(outDir));
+
+};
+
+const cssCopy = () => {
+
+  return src('./src/**/*.css')
+    .pipe(dest('lib'));
+
 }
 
-gulp.task("copyToSharePointFolder",
-    function () {
-        gulp.src(settings.srcFiles, { base: settingsSecurity.rootFolder })
-            .pipe(
-                cache(
-                    map(function(file, cb) {
-                        spsave({
-                                siteUrl: settings.siteCollURL,
-                                checkinType: 2,
-                                checkin: false
-                            },
-                            {
-                                username: settingsSecurity.username,
-                                password: settingsSecurity.pwd
-                            },
-                            {
-                                file: file,
-                                folder: settings.destFolder
-                            }
-                        );
-                        cb(null, file);
-                    }),
-                    {
-                        key: makeHashKey,
-                        fileCache: new cache.Cache({ cacheDirName: settings.projectname + '-cache' }),
-                        name: settingsSecurity.username + "." + settings.projectname
-                    }
-                )
-            );
-    }
-);
+// Webpack
+const webpack = () => {
 
-gulp.task("copyToSharePointFlat",
-    function () {
-        gulp.src(settings.srcFiles, { base: settingsSecurity.rootFolder })
-            .pipe(
-                cache(
-                    map(function(file, cb) {
-                        var filePath = file.history[0].replace(file.cwd, '.');
-                        spsave({
-                                siteUrl: settings.siteCollURL,
-                                checkinType: 2,
-                                checkin: false
-                            },
-                            {
-                                username: settingsSecurity.username,
-                                password: settingsSecurity.pwd
-                            },
-                            {
-                                glob: filePath,
-                                folder: settings.destFolder
-                            }
-                        );
-                        cb(null, file);
-                    }),
-                    {
-                        key: makeHashKey,
-                        fileCache: new cache.Cache({ cacheDirName: settings.projectname + '-cache' }),
-                        name: settingsSecurity.username + "." + settings.projectname
-                    }
-                )
-            );
-    }
-);
+  const webpackConfig = require('./webpack.config.js');
 
-gulp.task("watchFolder", function(){
-    gulp.watch(settings.srcFiles, ["copyToSharePointFolder"]);
-});
+  if (isProduction) {
+    webpackConfig.mode = 'production';
+  }
 
-gulp.task("watchFlat", function(){
-    gulp.watch(settings.srcFiles, ["copyToSharePointFlat"]);
-});
+  return src('lib/**/*.js')
+    .pipe(plumber())
+    .pipe(
+      webpackStream(webpackConfig))
+    .pipe(dest('dist'));
+
+}
+
+// remove dist on startup
+rimraf.sync('./dist');
+
+//if (!isProduction) {
+//  watch('./src/**/*.s[a|c]ss', series(sassCompile, webpack));
+//  watch('./src/**/*.{ts,tsx}', series(tsCompile, webpack));
+//}
+
+
+exports.build = series(tsCompile, cssCopy, webpack)
